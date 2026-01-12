@@ -38,16 +38,23 @@ export const ContractList: React.FC<ContractListProps> = ({ contracts, reports, 
 
   const isInternalControl = userProfile?.email === 'controleinterno.sfp@gmail.com';
   const isPGM = userProfile?.role === 'pgm';
-  const isManager = userProfile?.role === 'admin' || userProfile?.role === 'super_admin' || userProfile?.role === 'manager';
+  // Permissions Logic Redesign:
+  // 'manager' role = Department Manager (Can manage, but ONLY their department).
+  // 'admin'/'super_admin' = Global Manager (Can manage ALL).
+  const isGlobalAdmin = userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
+  const isDeptManager = userProfile?.role === 'manager'; // Role 'manager' is now dept-scoped
 
-  // ... checks ...
   const permissions = getUserPermissions(userProfile);
 
-  // Adjusted: Users with explicit 'manage' permission on contracts can also see all and manage
+  // Adjusted: Users with explicit 'manage' permission on contracts can also manage (department scope unless admin)
   const hasContractPermission = permissions.contracts?.manage === true;
 
-  const canSeeAll = isManager || isInternalControl || isPGM || permissions.contracts?.view || hasContractPermission;
-  const canManage = isManager || hasContractPermission;
+  // CRITICAL: Only Global Admins, PGM, or Internal Control can see ALL departments.
+  // Dept Managers and users with 'manage' permission are restricted to their own department.
+  const canSeeAll = isGlobalAdmin || isInternalControl || isPGM;
+
+  // Manage access: Admins, Dept Managers, or explicit permission
+  const canManage = isGlobalAdmin || isDeptManager || hasContractPermission;
 
   const isSuperAdmin = userProfile?.role === 'super_admin';
   const userDeptNormalized = useMemo(() => normalizeText(userProfile?.department || ''), [userProfile?.department]);
@@ -204,8 +211,12 @@ export const ContractList: React.FC<ContractListProps> = ({ contracts, reports, 
                 return (
                   <tr key={contract.id} className={`transition-colors cursor-pointer hover:brightness-95 ${rowBgClass}`} onClick={() => onEditContract(contract)}>
                     <td className="px-4 py-3"><div className="font-medium text-slate-900 flex items-center gap-1.5">{contract.isEmergency && <Siren size={14} className="text-red-500" />}{contract.contractId}</div><div className="text-[10px] text-slate-500 uppercase font-bold">{contract.department}</div></td>
-                    <td className={`px-4 py-3 ${isInactive ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}`} title={contract.object}>{contract.object}</td>
-                    <td className="px-4 py-3 hidden md:table-cell text-slate-500 text-xs">{contract.supplier}</td>
+                    <td className="px-4 py-3 max-w-[200px]" title={contract.object}>
+                      <div className={`text-sm whitespace-normal break-words ${isInactive ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}`}>
+                        {contract.object}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell text-slate-500 text-xs max-w-[150px] truncate" title={contract.supplier}>{contract.supplier}</td>
                     <td className="px-4 py-3 text-center font-medium">{contract.endDate}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex flex-col items-center gap-1">

@@ -72,14 +72,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const permissions = getUserPermissions(userProfile);
   const isInternalControl = userProfile?.email === 'controleinterno.sfp@gmail.com';
   const isPGM = userProfile?.role === 'pgm';
-  const isManager = userProfile?.role === 'admin' || userProfile?.role === 'super_admin' || userProfile?.role === 'manager';
 
-  // Align visibility with ContractList: Check granular permissions
-  // Creating a merged "can see all contracts" flag, though properly this should be per-doctype.
-  // Given the Dashboard filter only specifically restricts 'contract' kind by department currently, this is effective.
-  const canSeeAllContracts = permissions.contracts?.view || permissions.contracts?.manage;
+  // Permissions Logic Redesign:
+  // 'manager' role = Department Manager (Can manage, but ONLY their department).
+  // 'admin'/'super_admin' = Global Manager (Can manage ALL).
+  const isGlobalAdmin = userProfile?.role === 'admin' || userProfile?.role === 'super_admin';
+  // const isDeptManager = userProfile?.role === 'manager'; // Not needed for global view check
 
-  const canSeeAll = isManager || isInternalControl || isPGM || canSeeAllContracts;
+  // CRITICAL: NO granular permission should grant GLOBAL visibility automatically anymore,
+  // to prevent accidental data leaks for Dept Managers.
+  // const canSeeAllContracts = permissions.contracts?.manage; // REMOVED THIS DANGEROUS CHECK
+
+  // Only these roles can see ALL departments:
+  const canSeeAll = isGlobalAdmin || isInternalControl || isPGM;
 
   useEffect(() => {
     if (canSeeAll) {

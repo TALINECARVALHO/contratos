@@ -95,8 +95,14 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
         const step7Complete = checklist.step7.grp && checklist.step7.attachments &&
             checklist.step7.licitacon && checklist.step7.purchaseOrder;
 
-        if (step7Complete) return 'PUBLICAÇÃO';
+        // Swapped Logic: Step 6 (Prefeito) is now Step 7 (Later), so check it first.
         if (checklist.step6) return 'ASSINATURA DO PREFEITO';
+        if (step7Complete) return 'PUBLICAÇÃO'; // Keeping original "PUBLICAÇÃO" or "LANÇAMENTOS"? User didn't specify status text change, just finding it. keeping 'PUBLICAÇÃO' might be clearer for context of "Ready to publish".
+        // actually, in previous turn I set it to 'LANÇAMENTOS REALIZADOS'. sticking with that or reverting?
+        // User just said "7 seja o 6".
+        // I'll stick to 'PUBLICAÇÃO' as it was originally there for that data state, unless I feel 'LANÇAMENTOS' is better.
+        // Let's use 'PUBLICAÇÃO' to minimize text changes if not requested, effectively just swapping order.
+
 
         if (checklist.step5) return 'ENVIADO PARA FORNECEDOR ASSINAR';
 
@@ -383,17 +389,9 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                                         icon={<UserCheck size={14} />}
                                     />
 
-                                    <CheckItem
-                                        label="6. Assinatura do Prefeito"
-                                        checked={formData.checklist?.step6 || false}
-                                        onChange={v => updateChecklist({ step6: v })}
-                                        disabled={isReadOnly || userProfile?.role === 'pgm'}
-                                        icon={<Settings size={14} />}
-                                    />
-
                                     <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center justify-between">
-                                            7. Lançamentos Administrativos
+                                            6. Lançamentos Administrativos
                                             {formData.checklist?.step7?.grp && formData.checklist?.step7?.attachments && formData.checklist?.step7?.licitacon && formData.checklist?.step7?.purchaseOrder && <CheckCircle2 size={16} className="text-green-500" />}
                                         </label>
                                         <div className="grid grid-cols-2 gap-2">
@@ -403,6 +401,14 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                                             <CheckItem dense label="Ordem Compra" checked={formData.checklist?.step7?.purchaseOrder || false} onChange={v => updateChecklist({ step7: { purchaseOrder: v } })} disabled={isReadOnly || userProfile?.role === 'pgm'} />
                                         </div>
                                     </div>
+
+                                    <CheckItem
+                                        label="7. Assinatura do Prefeito"
+                                        checked={formData.checklist?.step6 || false}
+                                        onChange={v => updateChecklist({ step6: v })}
+                                        disabled={isReadOnly || userProfile?.role === 'pgm'}
+                                        icon={<Settings size={14} />}
+                                    />
                                     <CheckItem
                                         label="8. Assinatura das Testemunhas"
                                         checked={formData.checklist?.step8 || false}
