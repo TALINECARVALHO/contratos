@@ -1,0 +1,2 @@
+ALTER TABLE supplementation_items 
+ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE;

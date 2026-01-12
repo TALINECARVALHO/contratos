@@ -1,0 +1,5 @@
+{
+  "name": "TriDoc",
+  "description": "Sistema inteligente de gestão de contratos com análise via Gemini AI e visualização de dados.",
+  "requestFramePermissions": []
+}
