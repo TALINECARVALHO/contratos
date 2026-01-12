@@ -257,10 +257,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
       if (!canSeeAll) {
         // Should filter by department for restricted content
         // Simplified: if doc has department, must match user department.
-        // Some global items like Utility Bills might be visible to all or just admin.
-        // For now sticking to loose filter:
         const docDeptNormalized = normalizeText(doc.department || '');
-        if (docDeptNormalized && docDeptNormalized !== userDeptNormalized && doc.docKind === 'contract') return false;
+        if (docDeptNormalized && docDeptNormalized !== userDeptNormalized) {
+          return false;
+        }
       }
 
       const matchDept = departmentFilter === 'all' || doc.department === departmentFilter;
