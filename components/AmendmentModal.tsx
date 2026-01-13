@@ -19,7 +19,7 @@ const DEFAULT_CHECKLIST: AmendmentChecklist = {
     step2: false,
     step3: false,
     step4: null,
-    step5: false,
+    step5: { sent: false, received: false },
     step6: false,
     step7: {
         grp: false,
@@ -104,7 +104,14 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
         // Let's use 'PUBLICAÇÃO' to minimize text changes if not requested, effectively just swapping order.
 
 
-        if (checklist.step5) return 'ENVIADO PARA FORNECEDOR ASSINAR';
+        if (checklist.step5) {
+            const s5 = checklist.step5;
+            const isReceived = typeof s5 === 'object' ? s5.received : !!s5;
+            const isSent = typeof s5 === 'object' ? s5.sent : !!s5;
+
+            if (isReceived) return 'ASSINADO PELO FORNECEDOR';
+            if (isSent) return 'ENVIADO PARA FORNECEDOR';
+        }
 
         if (checklist.step4 === 'approved') return 'À ENVIAR PARA ASSINATURA';
         if (checklist.step4 === 'approved_with_reservation') return 'AJUSTES NECESSÁRIOS';
@@ -381,13 +388,34 @@ export const AmendmentModal: React.FC<AmendmentModalProps> = ({
                                         )}
                                     </div>
 
-                                    <CheckItem
-                                        label="5. Assinatura do Fornecedor"
-                                        checked={formData.checklist?.step5 || false}
-                                        onChange={v => updateChecklist({ step5: v })}
-                                        disabled={isReadOnly || userProfile?.role === 'pgm'}
-                                        icon={<UserCheck size={14} />}
-                                    />
+                                    <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center justify-between">
+                                            5. Assinatura do Fornecedor
+                                            {(typeof formData.checklist?.step5 === 'object' ? (formData.checklist?.step5?.sent && formData.checklist?.step5?.received) : formData.checklist?.step5) && <CheckCircle2 size={16} className="text-green-500" />}
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <CheckItem
+                                                dense
+                                                label="Enviado p/ Assinatura"
+                                                checked={typeof formData.checklist?.step5 === 'object' ? !!formData.checklist.step5.sent : !!formData.checklist?.step5}
+                                                onChange={v => {
+                                                    const current = typeof formData.checklist?.step5 === 'object' ? formData.checklist.step5 : { sent: !!formData.checklist?.step5, received: !!formData.checklist?.step5 };
+                                                    updateChecklist({ step5: { ...current, sent: v } });
+                                                }}
+                                                disabled={isReadOnly || userProfile?.role === 'pgm'}
+                                            />
+                                            <CheckItem
+                                                dense
+                                                label="Assinatura Recebida"
+                                                checked={typeof formData.checklist?.step5 === 'object' ? !!formData.checklist.step5.received : !!formData.checklist?.step5}
+                                                onChange={v => {
+                                                    const current = typeof formData.checklist?.step5 === 'object' ? formData.checklist.step5 : { sent: !!formData.checklist?.step5, received: !!formData.checklist?.step5 };
+                                                    updateChecklist({ step5: { ...current, received: v } });
+                                                }}
+                                                disabled={isReadOnly || userProfile?.role === 'pgm'}
+                                            />
+                                        </div>
+                                    </div>
 
                                     <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center justify-between">

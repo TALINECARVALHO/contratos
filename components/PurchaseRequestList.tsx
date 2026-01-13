@@ -161,13 +161,23 @@ export const PurchaseRequestList: React.FC<PurchaseRequestListProps> = ({
                                             <td className="px-4 py-3 bg-blue-50/50 font-mono text-blue-700 font-medium">
                                                 {(() => {
                                                     const orders = item.orders || [];
+                                                    if (item.status === 'rejected') return <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-bold">Reprovado</span>;
                                                     if (orders.length > 1) return <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Vários</span>;
                                                     if (orders.length === 1) return orders[0].number;
                                                     return '-';
                                                 })()}
                                             </td>
                                             <td className="px-4 py-3 bg-green-50/50 font-mono text-green-700 font-medium">
-                                                {item.commitmentNumber || '-'}
+                                                {(() => {
+                                                    const orders = item.orders || [];
+                                                    const hasRejection = orders.some(o => o.commitmentRejectionReason);
+                                                    const validCommitments = orders.filter(o => o.commitmentNumber);
+
+                                                    if (hasRejection) return <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-bold">Reprovado</span>;
+                                                    if (validCommitments.length > 1) return <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Vários</span>;
+                                                    if (validCommitments.length === 1) return validCommitments[0].commitmentNumber;
+                                                    return '-';
+                                                })()}
                                             </td>
 
                                             <td className="px-4 py-3 text-right">

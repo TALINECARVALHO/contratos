@@ -2,6 +2,7 @@
 import { supabase } from './supabaseClient';
 import { Contract, ContractAmendment } from '../types';
 import { logAction } from './logService';
+import { addDurationToDate } from './dateUtils';
 
 const formatDateFromDB = (dateStr: string): string => {
   if (!dateStr) return '';
@@ -115,7 +116,35 @@ export const fetchContracts = async (): Promise<Contract[]> => {
     );
 
     if (activeAmendment) {
-      return { ...contract, activeAmendmentStatus: activeAmendment.status };
+      let updatedContract = { ...contract, activeAmendmentStatus: activeAmendment.status };
+
+      // LÓGICA DE DATA DE PREVISÃO (AMENDMENT)
+      // Se chegou na etapa 6 (Lançamentos - mapeado como step7 no banco) ou 7 (Prefeito - step6), 
+      // consideramos a data nova como "Final" para visualização na lista.
+      if (activeAmendment.type === 'prazo' && activeAmendment.duration > 0 && activeAmendment.checklist) {
+        const checklist = activeAmendment.checklist;
+        // UI Step 6 = Checklist Step 7 (Lançamentos)
+        const isStep6Done = checklist.step7 && checklist.step7.grp && checklist.step7.attachments && checklist.step7.licitacon && checklist.step7.purchaseOrder;
+        // UI Step 7 = Checklist Step 6 (Prefeito)
+        const isStep7Done = checklist.step6;
+
+        if (isStep6Done || isStep7Done) {
+          const newDate = addDurationToDate(contract.endDate, activeAmendment.duration, activeAmendment.duration_unit || 'dia');
+          updatedContract.endDate = newDate;
+          // Recalcula dias restantes based on new date
+          // Note: calculateDays is not exported or we need to re-import it? 
+          // It IS exported in this file. But wait, calculateDays function is defined above mapRowToContract.
+          // We can use it.
+          updatedContract.daysRemaining = calculateDays(newDate);
+
+          // Updates status based on new days remaining
+          if (updatedContract.daysRemaining < 0) updatedContract.status = 'expired';
+          else if (updatedContract.daysRemaining <= 30) updatedContract.status = 'warning';
+          else updatedContract.status = 'active';
+        }
+      }
+
+      return updatedContract;
     }
     return contract;
   });

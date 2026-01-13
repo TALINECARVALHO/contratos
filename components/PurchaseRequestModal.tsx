@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PurchaseRequest, UserProfile, PurchaseOrder } from '../types';
-import { X, Save, FileText, ShoppingCart, Banknote, Plus, Trash2, Check } from 'lucide-react';
+import { X, Save, FileText, ShoppingCart, Banknote, Plus, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { getUserPermissions } from '../utils/permissions';
 import { createPurchaseOrder, deletePurchaseOrder } from '../services/purchaseService';
 
@@ -38,6 +38,7 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({
 
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [isRejecting, setIsRejecting] = useState(false);
 
     useEffect(() => {
         if (request) {
@@ -60,6 +61,7 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({
         setNewOrderNumber('');
         setNewOrderDate(new Date().toISOString().split('T')[0]);
         setShowSuccess(false);
+        setIsRejecting(false);
     }, [request, isOpen, userProfile]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -118,6 +120,34 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({
             setOrderToDelete(null);
         } catch (e) {
             alert('Erro ao remover ordem.');
+        }
+    };
+
+    const handleReject = async () => {
+        setIsSaving(true);
+        try {
+            await onSave({ ...formData, status: 'rejected' } as PurchaseRequest);
+            setShowSuccess(true);
+            // setIsRejecting(false); // Success modal covers it
+        } catch (error) {
+            console.error('Failed to reject', error);
+            alert('Erro ao reprovar a solicitação.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleResubmit = async () => {
+        setIsSaving(true);
+        try {
+            // Resubmit: Clear rejection info and set status back to requested
+            await onSave({ ...formData, status: 'requested', rejectionReason: null } as PurchaseRequest);
+            setShowSuccess(true);
+        } catch (error) {
+            console.error('Failed to resubmit', error);
+            alert('Erro ao reenviar a solicitação.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -234,8 +264,12 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({
                                     <option value="Outro">Outro</option>
                                 </select>
                             </div>
+                        </div>
+
+                        {/* ROW 2: Contrato (Conditional) + Objeto */}
+                        <div className="mt-4 flex flex-col md:flex-row gap-4">
                             {formData.type === 'Contratos' && (
-                                <div>
+                                <div className="w-full md:w-1/3">
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Nº do Contrato</label>
                                     <input
                                         type="text"
@@ -248,19 +282,18 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({
                                     />
                                 </div>
                             )}
-                        </div>
-                        {/* OBJETO / ASSUNTO */}
-                        <div className="mt-4">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Objeto / Assunto</label>
-                            <textarea
-                                name="object"
-                                value={formData.object || ''}
-                                onChange={handleChange}
-                                disabled={!canEditBasicInfo}
-                                rows={1}
-                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Descreva o objeto ou assunto da solicitação..."
-                            />
+                            <div className="flex-1">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Objeto / Assunto</label>
+                                <textarea
+                                    name="object"
+                                    value={formData.object || ''}
+                                    onChange={handleChange}
+                                    disabled={!canEditBasicInfo}
+                                    rows={1}
+                                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Descreva o objeto ou assunto da solicitação..."
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -276,121 +309,149 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({
                                 <table className="w-full text-sm text-left mb-4">
                                     <thead className="text-xs text-slate-500 uppercase bg-slate-100">
                                         <tr>
-                                            <th className="px-3 py-2 w-1/4">Nº Ordem</th>
-                                            <th className="px-3 py-2 w-1/4">Data Ordem</th>
-                                            <th className="px-3 py-2 w-1/4">Nº Empenho</th>
-                                            <th className="px-3 py-2 w-1/4">Data Empenho</th>
-                                            <th className="px-3 py-2 w-10"></th>
+                                            <th className="px-3 py-2 w-[10%]">Nº Ordem</th>
+                                            <th className="px-3 py-2 w-[15%]">Data Ordem</th>
+                                            <th className="px-3 py-2 w-[20%]">Nº Empenho</th>
+                                            <th className="px-3 py-2 w-[15%]">Data Empenho</th>
+                                            <th className="px-3 py-2 w-[40%]">Recusa (Fazenda)</th>
+                                            <th className="px-3 py-2 w-8"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200 bg-white border border-slate-200">
                                         {ordersList.map((order, idx) => (
-                                            <tr key={order.id || idx}>
-                                                {/* Colunas de Ordem (Edição Compras) */}
-                                                <td className="px-3 py-2">
-                                                    <div className="font-medium text-blue-900">{order.number}</div>
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    <div className="text-slate-600">{new Date(order.date).toLocaleDateString()}</div>
-                                                </td>
+                                            <React.Fragment key={order.id || idx}>
+                                                <tr>
+                                                    {/* Colunas de Ordem (Edição Compras) */}
+                                                    <td className="px-3 py-2 align-top">
+                                                        <div className="font-medium text-blue-900">{order.number}</div>
+                                                    </td>
+                                                    <td className="px-3 py-2 align-top">
+                                                        <div className="text-slate-600">{new Date(order.date).toLocaleDateString()}</div>
+                                                    </td>
 
-                                                {/* Colunas de Empenho (Edição Fazenda) */}
-                                                <td className="px-3 py-2">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Nº Empenho"
-                                                        value={order.commitmentNumber || ''}
-                                                        disabled={!isFinance}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            let newDate = order.commitmentDate;
+                                                    {/* Colunas de Empenho (Edição Fazenda) */}
+                                                    <td className="px-3 py-2 align-top">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Nº Empenho"
+                                                            value={order.commitmentNumber || ''}
+                                                            disabled={!isFinance}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                let newDate = order.commitmentDate;
 
-                                                            // Auto-fill date with current date if user starts typing and date is empty
-                                                            if (val && !newDate) {
-                                                                newDate = new Date().toISOString();
-                                                            }
+                                                                // Auto-fill date with current date if user starts typing and date is empty
+                                                                if (val && !newDate) {
+                                                                    newDate = new Date().toISOString();
+                                                                }
 
-                                                            const updated = {
-                                                                ...order,
-                                                                commitmentNumber: val,
-                                                                commitmentDate: newDate
-                                                            };
+                                                                const updated = {
+                                                                    ...order,
+                                                                    commitmentNumber: val,
+                                                                    commitmentDate: newDate
+                                                                };
 
-                                                            // Atualiza lista local
-                                                            const newList = [...ordersList];
-                                                            newList[idx] = updated;
-                                                            setOrdersList(newList);
-                                                        }}
-                                                        onBlur={async () => {
-                                                            if (order.id && !order.id.startsWith('temp_')) {
-                                                                // Import dinâmico ou prop drill do updatePurchaseOrder seria ideal, 
-                                                                // mas como estamos no modal, vamos assumir que o "handleSave" geral resolve ou fazemos update direto.
-                                                                // Para simplificar: FAZEMOS UPDATE DIRETO AQUI
-                                                                const { updatePurchaseOrder } = await import('../services/purchaseService');
-                                                                try {
-                                                                    await updatePurchaseOrder(ordersList[idx]);
-                                                                } catch (e) { console.error("Erro ao salvar empenho", e); }
-                                                            }
-                                                        }}
-                                                        className={`w-full p-1 border rounded ${!isFinance ? 'bg-slate-100 border-transparent' : 'border-green-300 focus:border-green-500'}`}
-                                                    />
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    <input
-                                                        type="date"
-                                                        value={order.commitmentDate ? order.commitmentDate.split('T')[0] : ''}
-                                                        disabled={!isFinance}
-                                                        onChange={(e) => {
-                                                            const updated = { ...order, commitmentDate: e.target.value };
-                                                            const newList = [...ordersList];
-                                                            newList[idx] = updated;
-                                                            setOrdersList(newList);
-                                                        }}
-                                                        onBlur={async () => {
-                                                            if (order.id && !order.id.startsWith('temp_')) {
-                                                                const { updatePurchaseOrder } = await import('../services/purchaseService');
-                                                                try {
-                                                                    await updatePurchaseOrder(ordersList[idx]);
-                                                                } catch (e) { console.error("Erro ao salvar data empenho", e); }
-                                                            }
-                                                        }}
-                                                        className={`w-full p-1 border rounded ${!isFinance ? 'bg-slate-100 border-transparent' : 'border-green-300 focus:border-green-500'}`}
-                                                    />
-                                                </td>
+                                                                // Atualiza lista local
+                                                                const newList = [...ordersList];
+                                                                newList[idx] = updated;
+                                                                setOrdersList(newList);
+                                                            }}
+                                                            onBlur={async () => {
+                                                                if (order.id && !order.id.startsWith('temp_')) {
+                                                                    const { updatePurchaseOrder } = await import('../services/purchaseService');
+                                                                    try {
+                                                                        await updatePurchaseOrder(ordersList[idx]);
+                                                                    } catch (e) { console.error("Erro ao salvar empenho", e); }
+                                                                }
+                                                            }}
+                                                            className={`w-full p-1 border rounded ${!isFinance ? 'bg-slate-100 border-transparent' : 'border-green-300 focus:border-green-500'}`}
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2 align-top">
+                                                        <input
+                                                            type="date"
+                                                            value={order.commitmentDate ? order.commitmentDate.split('T')[0] : ''}
+                                                            disabled={!isFinance}
+                                                            onChange={(e) => {
+                                                                const updated = { ...order, commitmentDate: e.target.value };
+                                                                const newList = [...ordersList];
+                                                                newList[idx] = updated;
+                                                                setOrdersList(newList);
+                                                            }}
+                                                            onBlur={async () => {
+                                                                if (order.id && !order.id.startsWith('temp_')) {
+                                                                    const { updatePurchaseOrder } = await import('../services/purchaseService');
+                                                                    try {
+                                                                        await updatePurchaseOrder(ordersList[idx]);
+                                                                    } catch (e) { console.error("Erro ao salvar data empenho", e); }
+                                                                }
+                                                            }}
+                                                            className={`w-full p-1 border rounded text-xs ${!isFinance ? 'bg-slate-100 border-transparent' : 'border-green-300 focus:border-green-500'}`}
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2 align-top">
+                                                        <textarea
+                                                            rows={1}
+                                                            placeholder={isFinance ? "Motivo recusa..." : ""}
+                                                            value={order.commitmentRejectionReason || ''}
+                                                            disabled={!isFinance}
+                                                            onChange={(e) => {
+                                                                const updated = { ...order, commitmentRejectionReason: e.target.value };
+                                                                const newList = [...ordersList];
+                                                                newList[idx] = updated;
+                                                                setOrdersList(newList);
+                                                            }}
+                                                            onBlur={async () => {
+                                                                if (order.id && !order.id.startsWith('temp_')) {
+                                                                    const { updatePurchaseOrder } = await import('../services/purchaseService');
+                                                                    try {
+                                                                        await updatePurchaseOrder(ordersList[idx]);
+                                                                    } catch (e) { console.error("Erro ao salvar recusa empenho", e); }
+                                                                }
+                                                            }}
+                                                            className={`w-full p-1 border rounded text-xs placeholder:text-red-300 text-red-700 resize-y min-h-[30px] ${!isFinance ? 'bg-slate-50 border-transparent' : 'border-amber-200 focus:border-amber-400 focus:ring-1 focus:ring-amber-200'}`}
+                                                        />
+                                                    </td>
 
-                                                <td className="px-3 py-2 text-right w-24">
-                                                    {canManageOrders && (
-                                                        orderToDelete === order.id ? (
-                                                            <div className="flex items-center justify-end gap-2">
-                                                                <span className="text-xs text-red-600 font-bold">Excluir?</span>
+                                                    <td className="px-3 py-2 text-right w-24 align-top">
+                                                        {canManageOrders && (
+                                                            orderToDelete === order.id ? (
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    <span className="text-xs text-red-600 font-bold">Excluir?</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleDeleteOrder(order.id)}
+                                                                        className="text-red-600 hover:text-red-800 font-bold text-xs border border-red-200 bg-red-50 px-2 py-1 rounded"
+                                                                    >
+                                                                        Sim
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setOrderToDelete(null)}
+                                                                        className="text-slate-500 hover:text-slate-700 text-xs px-2 py-1"
+                                                                    >
+                                                                        Não
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => handleDeleteOrder(order.id)}
-                                                                    className="text-red-600 hover:text-red-800 font-bold text-xs border border-red-200 bg-red-50 px-2 py-1 rounded"
+                                                                    onClick={() => setOrderToDelete(order.id)}
+                                                                    className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                                                                    title="Excluir Ordem"
                                                                 >
-                                                                    Sim
+                                                                    <Trash2 size={16} />
                                                                 </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setOrderToDelete(null)}
-                                                                    className="text-slate-500 hover:text-slate-700 text-xs px-2 py-1"
-                                                                >
-                                                                    Não
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setOrderToDelete(order.id)}
-                                                                className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
-                                                                title="Excluir Ordem"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        )
-                                                    )}
-                                                </td>
-                                            </tr>
+                                                            )
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                                {/* Rejection / Validation Reasons Row - REMOVED per user request
+                                                <tr className="bg-slate-50/50">
+                                                     ...
+                                                </tr> 
+                                                */}
+                                            </React.Fragment>
                                         ))}
                                         {ordersList.length === 0 && (
                                             <tr>
@@ -439,21 +500,96 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({
                         </div>
                     )}
 
-                    <div className="flex justify-end pt-4 border-t border-slate-200">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg mr-2"
-                        >
-                            Fechar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                        >
-                            {isSaving ? 'Salvando...' : <><Save size={20} /> Salvar Alterações</>}
-                        </button>
+                    {/* Rejection Alert - Visible if status is rejected */}
+                    {formData.status === 'rejected' && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                            <h3 className="text-red-800 font-bold flex items-center gap-2 mb-2">
+                                <AlertTriangle size={20} /> Solicitação Reprovada
+                            </h3>
+                            <p className="text-red-700 text-sm">
+                                <strong>Motivo:</strong> {formData.rejectionReason || 'Nenhum motivo informado.'}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Rejection Input Area - Visible when "Reprovar" is clicked */}
+                    {isRejecting && (
+                        <div className="bg-red-50 p-4 rounded-lg border border-red-200 animate-in slide-in-from-bottom-2 fade-in">
+                            <label className="block text-sm font-bold text-red-800 mb-2">Motivo da Reprovação</label>
+                            <textarea
+                                value={formData.rejectionReason || ''}
+                                onChange={(e) => setFormData(prev => ({ ...prev, rejectionReason: e.target.value }))}
+                                className="w-full p-2 border border-red-300 rounded bg-white text-slate-700 min-h-[80px]"
+                                placeholder="Descreva o motivo da reprovação desta solicitação..."
+                                autoFocus
+                            />
+                            <div className="flex justify-end gap-3 mt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRejecting(false)}
+                                    className="px-3 py-1.5 text-slate-600 hover:bg-slate-200 rounded text-sm"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleReject}
+                                    disabled={!formData.rejectionReason}
+                                    className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-bold disabled:opacity-50"
+                                >
+                                    Confirmar Reprovação
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between pt-4 border-t border-slate-200">
+                        <div>
+                            {/* Delete Button (Keep existance logic if needed, or just standard actions) */}
+                        </div>
+
+                        <div className="flex gap-2">
+                            {/* Show "Reprovar" button ONLY if Manager, not already rejected, and not currently rejecting */}
+                            {canManage && formData.status !== 'rejected' && !isRejecting && request && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRejecting(true)}
+                                    className="px-4 py-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg mr-2 font-medium"
+                                >
+                                    Reprovar Solicitação
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg"
+                            >
+                                Fechar
+                            </button>
+
+                            {!isRejecting && (
+                                <button
+                                    type="submit"
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                                >
+                                    {isSaving ? 'Salvando...' : <><Save size={20} /> Salvar Alterações</>}
+                                </button>
+                            )}
+
+                            {/* Resubmit Button - Visible ONLY if Rejected and User Can Edit (Owner/Manager) */}
+                            {!isRejecting && formData.status === 'rejected' && (canEditBasicInfo || canManage) && (
+                                <button
+                                    type="button"
+                                    onClick={handleResubmit}
+                                    className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2 ml-2"
+                                    disabled={isSaving}
+                                >
+                                    <FileText size={20} /> Reenviar p/ Análise
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </form>
             </div>

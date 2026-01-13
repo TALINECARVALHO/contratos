@@ -53,6 +53,7 @@ import { PurchaseRequestModal } from './components/PurchaseRequestModal';
 import { UserMenu } from './components/UserMenu';
 import { NotificationCenter } from './components/NotificationCenter';
 import { SupplementationForm } from './components/SupplementationForm';
+import { AmendmentList } from './components/AmendmentList';
 import { addDurationToDate, calculateDaysRemaining } from './services/dateUtils';
 
 import { getUserPermissions } from './utils/permissions';
@@ -199,11 +200,12 @@ const App: React.FC = () => {
   const enrichedContracts = React.useMemo(() => {
     return contracts.map(contract => {
       // Filtra apenas aditivos de prazo CONCLUÍDOS (step8 = true)
-      const contractAmendments = amendments.filter(a =>
-        String(a.contractId) === String(contract.id) &&
-        a.type === 'prazo' &&
-        a.checklist?.step8 === true
-      );
+      const contractAmendments = amendments.filter(a => {
+        const isSigned = typeof a.checklist?.step5 === 'object' ? a.checklist.step5.received : a.checklist?.step5;
+        return String(a.contractId) === String(contract.id) &&
+          a.type === 'prazo' &&
+          (a.checklist?.step8 === true || isSigned);
+      });
 
       let effectiveEndDate = contract.endDate;
       contractAmendments.forEach(amendment => {
@@ -270,19 +272,20 @@ const App: React.FC = () => {
   const getViewTitle = (currentView: string) => {
     switch (currentView) {
       case 'dashboard': return 'PAINEL DE CONTROLE';
-      case 'list': return 'GESTÃO DE CONTRATOS';
+      case 'contracts': return 'GESTÃO DE CONTRATOS';
       case 'minutes': return 'ATAS DE REGISTRO DE PREÇOS';
-      case 'biddings': return 'CONTROLE DE LICITAÇÕES';
+      case 'bidding': return 'CONTROLE DE LICITAÇÕES';
       case 'fiscalization': return 'FISCALIZAÇÃO MENSAL';
       case 'reports': return 'RELATÓRIOS E CONSULTAS';
       case 'users': return 'GESTÃO DE USUÁRIOS';
-      case 'tools': return 'CONFIGURAÇÕES DO SISTEMA';
+      case 'settings': return 'CONFIGURAÇÕES DO SISTEMA';
       case 'help': return 'MANUAL DO USUÁRIO';
       case 'pgm_dispatch': return 'DESPACHOS PGM';
       case 'purchase_requests': return 'EMPENHOS';
-      case 'daily_allowance': return 'DIÁRIAS';
+      case 'daily_allowances': return 'DIÁRIAS';
       case 'utility_bills': return 'CONTAS DE CONSUMO';
-      case 'supplementation': return 'SUPLEMENTAÇÃO ORÇAMENTÁRIA';
+      case 'supplementations': return 'SUPLEMENTAÇÃO ORÇAMENTÁRIA';
+      case 'amendments': return 'GESTÃO DE ADITIVOS';
       default: return currentView.toUpperCase();
     }
   };
@@ -324,17 +327,18 @@ const App: React.FC = () => {
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
           <NavItem viewName="dashboard" icon={LayoutDashboard} label="Dashboard" />
-          <NavItem viewName="list" icon={FileText} label="Contratos" enabled={!!perms.contracts?.view} />
+          <NavItem viewName="contracts" icon={FileText} label="Contratos" enabled={!!perms.contracts?.view} />
+          <NavItem viewName="amendments" icon={RefreshCw} label="Aditivos" enabled={!!perms.contracts?.view} />
           <NavItem viewName="minutes" icon={ClipboardList} label="Atas" enabled={!!perms.minutes?.view} />
-          <NavItem viewName="biddings" icon={Gavel} label="Licitações" enabled={!!(perms.biddings?.view && menuSettings?.biddings_enabled)} />
+          <NavItem viewName="bidding" icon={Gavel} label="Licitações" enabled={!!(perms.biddings?.view && menuSettings?.biddings_enabled)} />
           <NavItem viewName="purchase_requests" icon={ShoppingCart} label="Empenhos" enabled={!!perms.purchase_request?.view} />
-          <NavItem viewName="daily_allowance" icon={Briefcase} label="Diárias" enabled={!!perms.daily_allowance?.view} />
+          <NavItem viewName="daily_allowances" icon={Briefcase} label="Diárias" enabled={!!perms.daily_allowance?.view} />
           <NavItem viewName="utility_bills" icon={Lightbulb} label="Água/Luz" enabled={!!perms.utility_bills?.view} />
-          <NavItem viewName="supplementation" icon={TrendingUp} label="Suplementação" enabled={!!perms.supplementation?.view} />
+          <NavItem viewName="supplementations" icon={TrendingUp} label="Suplementação" enabled={!!perms.supplementation?.view} />
           <NavItem viewName="pgm_dispatch" icon={Scale} label="Despachos PGM" enabled={!!(perms.pgm_dispatch?.view && menuSettings?.pgm_dispatch_enabled)} />
           <NavItem viewName="fiscalization" icon={ShieldCheck} label="Fiscalização" enabled={!!(perms.fiscalization?.view && menuSettings?.fiscalization_enabled)} />
           <NavItem viewName="users" icon={Users} label="Usuários" enabled={!!perms.users?.view} />
-          {isSuperAdmin && <NavItem viewName="tools" icon={Settings} label="Configurações" />}
+          {isSuperAdmin && <NavItem viewName="settings" icon={Settings} label="Configurações" />}
         </nav>
       </aside>
 
@@ -372,9 +376,9 @@ const App: React.FC = () => {
               allUsers={allUsers}
             />
           )}
-          {view === 'list' && <ContractList contracts={enrichedContracts} reports={reports} userProfile={userProfile} onNewContract={() => { setEditingContract(null); setIsContractModalOpen(true); }} onEditContract={(c) => { setEditingContract(c); setIsContractModalOpen(true); }} onDeleteContract={deleteContract} />}
+          {view === 'contracts' && <ContractList contracts={enrichedContracts} reports={reports} userProfile={userProfile} onNewContract={() => { setEditingContract(null); setIsContractModalOpen(true); }} onEditContract={(c) => { setEditingContract(c); setIsContractModalOpen(true); }} onDeleteContract={deleteContract} />}
           {view === 'minutes' && <MinuteList minutes={minutes} reports={reports} userProfile={userProfile} onNewMinute={() => { setEditingMinute(null); setIsMinuteModalOpen(true); }} onEditMinute={(m) => { setEditingMinute(m); setIsMinuteModalOpen(true); }} onDeleteMinute={deleteMinute} />}
-          {view === 'biddings' && <BiddingList biddings={biddings} userProfile={userProfile} onNewBidding={() => { setEditingBidding(null); setIsBiddingModalOpen(true); }} onEditBidding={(b) => { setEditingBidding(b); setIsBiddingModalOpen(true); }} onDeleteBidding={deleteBidding} onViewCalendar={() => setIsBiddingCalendarOpen(true)} />}
+          {view === 'bidding' && <BiddingList biddings={biddings} userProfile={userProfile} onNewBidding={() => { setEditingBidding(null); setIsBiddingModalOpen(true); }} onEditBidding={(b) => { setEditingBidding(b); setIsBiddingModalOpen(true); }} onDeleteBidding={deleteBidding} onViewCalendar={() => setIsBiddingCalendarOpen(true)} />}
           {view === 'fiscalization' && <FiscalizationList contracts={enrichedContracts} minutes={minutes} userProfile={userProfile} />}
           {view === 'pgm_dispatch' && <PGMDispatchList
             amendments={amendments}
@@ -412,7 +416,7 @@ const App: React.FC = () => {
             }}
           />}
           {view === 'purchase_requests' && <PurchaseRequestList requests={purchaseRequests} userProfile={userProfile} onNew={() => { setEditingPurchaseRequest(null); setPurchaseRequestMode('create'); setIsPurchaseRequestModalOpen(true); }} onEdit={(r) => { setEditingPurchaseRequest(r); setPurchaseRequestMode('edit'); setIsPurchaseRequestModalOpen(true); }} onManage={(r) => { setEditingPurchaseRequest(r); setPurchaseRequestMode('manage'); setIsPurchaseRequestModalOpen(true); }} onDelete={async (id) => { await deletePurchaseRequest(id); loadData(); }} />}
-          {view === 'daily_allowance' && (
+          {view === 'daily_allowances' && (
             <DailyAllowanceList
               dailyAllowances={dailyAllowances}
               userProfile={userProfile}
@@ -439,7 +443,7 @@ const App: React.FC = () => {
               onRefresh={loadData}
             />
           )}
-          {view === 'supplementation' && (
+          {view === 'supplementations' && (
             isCreatingSupplementation ? (
               <SupplementationForm
                 onCancel={() => {
@@ -466,8 +470,16 @@ const App: React.FC = () => {
               />
             )
           )}
+          {view === 'amendments' && (
+            <AmendmentList
+              contracts={contracts}
+              amendments={amendments}
+              onEditContract={(c) => { setEditingContract(c); setIsContractModalOpen(true); }}
+              userProfile={userProfile}
+            />
+          )}
           {view === 'users' && <UserManagement />}
-          {view === 'tools' && <SystemTools />}
+          {view === 'settings' && <SystemTools />}
         </main>
       </div>
 

@@ -183,11 +183,12 @@ export const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose, o
   /* Logic for Confirmed End Date (Only Concluded) */
   const effectiveEndDate = React.useMemo(() => {
     if (!formData.endDate) return "";
-    const concludedAmendments = amendments.filter(a =>
-      String(a.contractId) === String(contract?.id) &&
-      a.type === 'prazo' &&
-      a.checklist?.step8 === true
-    );
+    const concludedAmendments = amendments.filter(a => {
+      const isSigned = typeof a.checklist?.step5 === 'object' ? a.checklist.step5.received : a.checklist?.step5;
+      return String(a.contractId) === String(contract?.id) &&
+        a.type === 'prazo' &&
+        (a.checklist?.step8 === true || isSigned);
+    });
     let date = formData.endDate;
     concludedAmendments.forEach(a => {
       date = addDurationToDate(date, a.duration, a.durationUnit);

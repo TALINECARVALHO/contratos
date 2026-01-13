@@ -54,7 +54,7 @@ export interface Minute {
   hasAdministrativeFiscal?: boolean; // Flag to indicate if ADM fiscal is required
 }
 
-export type ViewMode = 'dashboard' | 'list' | 'minutes' | 'biddings' | 'users' | 'tools' | 'fiscalization' | 'reports' | 'help' | 'amendments' | 'pgm_dispatch' | 'commitments' | 'daily_allowance' | 'utility_bills' | 'supplementation' | 'purchase_requests';
+export type ViewMode = 'dashboard' | 'contracts' | 'minutes' | 'bidding' | 'daily_allowances' | 'utility_bills' | 'settings' | 'supplementations' | 'purchase_requests' | 'amendments' | 'pgm_dispatch' | 'fiscalization' | 'users';
 
 export type BiddingModality =
   | 'pregao_eletronico'      // Pregão Eletrônico
@@ -190,6 +190,8 @@ export interface PurchaseOrder {
   date: string;
   commitmentNumber?: string;
   commitmentDate?: string;
+  rejectionReason?: string; // Motivo da reprovação da Ordem
+  commitmentRejectionReason?: string; // Motivo da recusa do Empenho (Fazenda)
   created_at?: string;
 }
 
@@ -215,7 +217,8 @@ export interface PurchaseRequest {
   commitmentNumber?: string; // Empenho
   commitmentDate?: string;
 
-  status: 'requested' | 'ordered' | 'committed' | 'completed';
+  status: 'requested' | 'ordered' | 'committed' | 'completed' | 'rejected';
+  rejectionReason?: string;
   notes?: string;
   created_at?: string;
 }
@@ -325,7 +328,7 @@ export interface AmendmentChecklist {
   step2: boolean; // Fazendo
   step3: boolean; // Enviado para PGM
   step4: 'approved' | 'approved_with_reservation' | 'rejected' | null; // Devolvido da PGM
-  step5: boolean; // Assinatura Fornecedor
+  step5: boolean | { sent: boolean; received: boolean }; // Assinatura Fornecedor
   step6: boolean; // Assinatura Prefeito
   step7: {
     grp: boolean;
