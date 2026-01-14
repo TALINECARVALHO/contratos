@@ -48,13 +48,14 @@ export const ContractList: React.FC<ContractListProps> = ({ contracts, reports, 
 
   // Adjusted: Users with explicit 'manage' permission on contracts can also manage (department scope unless admin)
   const hasContractPermission = permissions.contracts?.manage === true;
+  const hasMinutePermission = permissions.minutes?.manage === true;
 
-  // CRITICAL: Only Global Admins, PGM, or Internal Control can see ALL departments.
-  // Dept Managers and users with 'manage' permission are restricted to their own department.
-  const canSeeAll = isGlobalAdmin || isInternalControl || isPGM;
+  // CRITICAL: Only Global Admins, PGM, Internal Control OR users with explicit MANAGE permission can see ALL departments.
+  // Dept Managers (role 'manager') are restricted to their own department unless they have the explicit permission.
+  const canSeeAll = isGlobalAdmin || isInternalControl || isPGM || hasContractPermission || hasMinutePermission;
 
   // Manage access: Admins, Dept Managers, or explicit permission
-  const canManage = isGlobalAdmin || isDeptManager || hasContractPermission;
+  const canManage = isGlobalAdmin || isDeptManager || hasContractPermission || hasMinutePermission;
 
   const isSuperAdmin = userProfile?.role === 'super_admin';
   const userDeptNormalized = useMemo(() => normalizeText(userProfile?.department || ''), [userProfile?.department]);
@@ -120,10 +121,7 @@ export const ContractList: React.FC<ContractListProps> = ({ contracts, reports, 
       if (filterStatus === 'today') return c.daysRemaining === 0;
       return c.status === filterStatus;
     }).sort((a, b) => {
-      // Contracts with active amendments should be prioritized/visible
-      if (a.activeAmendmentStatus && !b.activeAmendmentStatus) return -1;
-      if (!a.activeAmendmentStatus && b.activeAmendmentStatus) return 1;
-
+      // Prioritize active contracts over inactive ones, then sort by days remaining
       const isA_Inactive = a.status === 'executed' || a.status === 'rescinded';
       const isB_Inactive = b.status === 'executed' || b.status === 'rescinded';
       if (isA_Inactive && !isB_Inactive) return 1;
