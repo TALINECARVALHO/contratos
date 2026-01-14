@@ -553,7 +553,7 @@ export const DailyAllowanceModal: React.FC<DailyAllowanceModalProps> = ({
                                                             className="flex-1 p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                                             value={formData.commitmentNumber || ''}
                                                             onChange={e => setFormData({ ...formData, commitmentNumber: e.target.value })}
-                                                            disabled={!canManage || (formData.status !== 'approved' && formData.status !== 'accountability_approved')}
+                                                            disabled={!canManage || !['approved', 'accountability_approved', 'committed', 'payment_ordered', 'paid'].includes(formData.status || '')}
                                                         />
                                                         {(formData.status === 'approved' || formData.status === 'accountability_approved') && canManage && (
                                                             <button
@@ -592,7 +592,7 @@ export const DailyAllowanceModal: React.FC<DailyAllowanceModalProps> = ({
                                                             className="flex-1 p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                                                             value={formData.paymentOrderNumber || ''}
                                                             onChange={e => setFormData({ ...formData, paymentOrderNumber: e.target.value })}
-                                                            disabled={!canManage || formData.status !== 'committed'}
+                                                            disabled={!canManage || !['committed', 'payment_ordered', 'paid'].includes(formData.status || '')}
                                                         />
                                                         {formData.status === 'committed' && canManage && (
                                                             <button
