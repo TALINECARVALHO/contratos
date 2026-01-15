@@ -54,7 +54,7 @@ export interface Minute {
   hasAdministrativeFiscal?: boolean; // Flag to indicate if ADM fiscal is required
 }
 
-export type ViewMode = 'dashboard' | 'contracts' | 'minutes' | 'bidding' | 'daily_allowances' | 'utility_bills' | 'settings' | 'supplementations' | 'purchase_requests' | 'amendments' | 'pgm_dispatch' | 'fiscalization' | 'users';
+export type ViewMode = 'dashboard' | 'contracts' | 'minutes' | 'bidding' | 'daily_allowances' | 'utility_bills' | 'settings' | 'supplementations' | 'purchase_requests' | 'amendments' | 'pgm_dispatch' | 'fiscalization' | 'users' | 'fuel_management' | 'vehicle_maintenance';
 
 export type BiddingModality =
   | 'pregao_eletronico'      // Pregão Eletrônico
@@ -170,6 +170,8 @@ export interface UserPermissions {
   fiscalization?: ModulePermission;
   pgm_dispatch?: ModulePermission;
   users?: ModulePermission;
+  fuel_management?: ModulePermission;
+  vehicle_maintenance?: ModulePermission;
 }
 
 export interface UserProfile {
@@ -459,3 +461,93 @@ export interface DynamicSetting {
   id: string;
   name: string;
 }
+
+// ============================================
+// FUEL MANAGEMENT (Gestão de Combustível)
+// ============================================
+
+export interface FuelCommitment {
+  id: string;
+  number: string;
+  department: string;
+  dotation?: string;
+  totalValue: number;
+  balance: number;
+  notes?: string;
+  created_at?: string;
+}
+
+export interface FuelRecordDetail {
+  id?: string;
+  vehicle_plate: string;
+  liters: number;
+  price_per_liter: number;
+  total_value: number;
+  fuel_type: 'gasoline' | 'ethanol' | 'diesel';
+}
+
+export interface FuelRecord {
+  id: string;
+  department: string;
+  reference_month: string; // MM/YYYY - Mês de referência
+  total_liters: number;
+  total_value: number;
+  commitment_id: string; // Empenho vinculado (obrigatório)
+  details: FuelRecordDetail[]; // Detalhamento por veículo
+  status: 'pending' | 'paid';
+  payment_date?: string;
+  notes?: string;
+  created_at?: string;
+}
+
+// ============================================
+// VEHICLE MAINTENANCE (Manutenção de Veículos)
+// ============================================
+
+export interface Vehicle {
+  id: string;
+  plate: string;
+  brand: string;
+  model: string;
+  year: number;
+  department: string;
+  type: 'car' | 'truck' | 'motorcycle' | 'bus' | 'other';
+  status: 'active' | 'maintenance' | 'inactive';
+  notes?: string;
+  created_at?: string;
+}
+
+export interface MaintenanceItem {
+  id?: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+}
+
+export interface VehicleMaintenance {
+  id: string;
+  vehicle_id: string;
+  vehicle_plate: string;
+  requesting_department: string; // Secretaria solicitante
+  type: 'preventive' | 'corrective';
+  request_date: string; // Data da solicitação
+  description: string; // Descrição do problema/necessidade
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+
+  // Preenchido pela Frotas após execução
+  execution_date?: string;
+  odometer?: number;
+  service_provider?: string;
+  total_value?: number;
+  items?: MaintenanceItem[];
+  commitment_number?: string;
+
+  status: 'requested' | 'approved' | 'in_progress' | 'completed' | 'paid' | 'rejected';
+  rejection_reason?: string;
+  payment_date?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+

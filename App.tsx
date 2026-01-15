@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ViewMode, Contract, UserProfile, Minute, AlertDocument, FiscalizationReport, NotificationSettings, ContractAmendment, Bidding, Commitment, DailyAllowance, UtilityBill, SupplementationRequest, UtilityCommitment, PurchaseRequest, UtilityUnit, DynamicSetting } from './types';
+import { ViewMode, Contract, UserProfile, Minute, AlertDocument, FiscalizationReport, NotificationSettings, ContractAmendment, Bidding, Commitment, DailyAllowance, UtilityBill, SupplementationRequest, UtilityCommitment, PurchaseRequest, UtilityUnit, DynamicSetting, FuelRecord, FuelCommitment, Vehicle, VehicleMaintenance } from './types';
 import { fetchContracts, createContract, updateContract, deleteContract } from './services/contractService';
 import { fetchMinutes, createMinute, updateMinute, deleteMinute } from './services/minuteService';
 import { fetchBiddings, createBidding, updateBidding, deleteBidding } from './services/biddingService';
@@ -30,10 +30,12 @@ import { fetchUtilityUnits, createUtilityUnit, updateUtilityUnit, deleteUtilityU
 import { fetchDepartments } from './services/settingsService';
 import { fetchSupplementations, createSupplementation, updateSupplementation, deleteSupplementation } from './services/supplementationService';
 import { fetchPurchaseRequests, createPurchaseRequest, updatePurchaseRequest, deletePurchaseRequest } from './services/purchaseService';
+import { fetchFuelRecords, createFuelRecord, updateFuelRecord, deleteFuelRecord, fetchFuelCommitments, createFuelCommitment, updateFuelCommitment, deleteFuelCommitment } from './services/fuelService';
+import { fetchVehicles, createVehicle, updateVehicle, deleteVehicle, fetchVehicleMaintenances, createVehicleMaintenance, updateVehicleMaintenance, deleteVehicleMaintenance } from './services/vehicleMaintenanceService';
 
 import { ProfileModal } from './components/ProfileModal';
 import { supabase } from './services/supabaseClient';
-import { LayoutDashboard, FileText, Menu, Loader2, AlertCircle, Database, Users, ClipboardList, ShieldCheck, FileSearch, Settings, RefreshCw, BookOpen, Scale, Gavel, Eye, Banknote, Briefcase, Lightbulb, TrendingUp, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileText, Menu, Loader2, AlertCircle, Database, Users, ClipboardList, ShieldCheck, FileSearch, Settings, RefreshCw, BookOpen, Scale, Gavel, Eye, Banknote, Briefcase, Lightbulb, TrendingUp, ShoppingCart, ChevronLeft, ChevronRight, Droplet, Wrench } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { DbConfigModal } from './components/DbConfigModal';
 import { ContractModal } from './components/ContractModal';
@@ -55,6 +57,12 @@ import { NotificationCenter } from './components/NotificationCenter';
 import { SupplementationForm } from './components/SupplementationForm';
 import { AmendmentList } from './components/AmendmentList';
 import { addDurationToDate, calculateDaysRemaining } from './services/dateUtils';
+import { FuelList } from './components/FuelList';
+import { FuelModal } from './components/FuelModal';
+import { FuelCommitmentModal } from './components/FuelCommitmentModal';
+import { VehicleMaintenanceList } from './components/VehicleMaintenanceList';
+import { VehicleMaintenanceModal } from './components/VehicleMaintenanceModal';
+import { VehicleModal } from './components/VehicleModal';
 
 import { getUserPermissions } from './utils/permissions';
 
@@ -128,6 +136,22 @@ const App: React.FC = () => {
   const [isPurchaseRequestModalOpen, setIsPurchaseRequestModalOpen] = useState(false);
   const [isCreatingSupplementation, setIsCreatingSupplementation] = useState(false);
 
+  // Fuel Management States
+  const [fuelRecords, setFuelRecords] = useState<FuelRecord[]>([]);
+  const [fuelCommitments, setFuelCommitments] = useState<FuelCommitment[]>([]);
+  const [editingFuelRecord, setEditingFuelRecord] = useState<FuelRecord | null>(null);
+  const [isFuelModalOpen, setIsFuelModalOpen] = useState(false);
+  const [editingFuelCommitment, setEditingFuelCommitment] = useState<FuelCommitment | null>(null);
+  const [isFuelCommitmentModalOpen, setIsFuelCommitmentModalOpen] = useState(false);
+
+  // Vehicle Maintenance States
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleMaintenances, setVehicleMaintenances] = useState<VehicleMaintenance[]>([]);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [editingVehicleMaintenance, setEditingVehicleMaintenance] = useState<VehicleMaintenance | null>(null);
+  const [isVehicleMaintenanceModalOpen, setIsVehicleMaintenanceModalOpen] = useState(false);
+
   useEffect(() => { localStorage.setItem('app_current_view', view); }, [view]);
 
   useEffect(() => {
@@ -157,7 +181,7 @@ const App: React.FC = () => {
     setError(null);
     setIsPermissionsError(false);
     try {
-      const [contractsData, minutesData, biddingsData, reportsData, usersData, settingsData, amendmentsData, menuSettingsData, dailyAllowancesData, utilityBillsData, utilityCommitmentsData, utilityUnitsData, supplementationsData, purchaseRequestsData, departmentsData] = await Promise.all([
+      const [contractsData, minutesData, biddingsData, reportsData, usersData, settingsData, amendmentsData, menuSettingsData, dailyAllowancesData, utilityBillsData, utilityCommitmentsData, utilityUnitsData, supplementationsData, purchaseRequestsData, departmentsData, fuelRecordsData, fuelCommitmentsData, vehiclesData, vehicleMaintenancesData] = await Promise.all([
         fetchContracts(),
         fetchMinutes().catch(() => []),
         fetchBiddings().catch(() => []),
@@ -172,7 +196,11 @@ const App: React.FC = () => {
         fetchUtilityUnits().catch(() => []),
         fetchSupplementations().catch(() => []),
         fetchPurchaseRequests().catch(() => []),
-        fetchDepartments().catch(() => [])
+        fetchDepartments().catch(() => []),
+        fetchFuelRecords().catch(() => []),
+        fetchFuelCommitments().catch(() => []),
+        fetchVehicles().catch(() => []),
+        fetchVehicleMaintenances().catch(() => [])
       ]);
       setContracts(contractsData);
       setMinutes(minutesData);
@@ -189,7 +217,10 @@ const App: React.FC = () => {
       setSupplementations(supplementationsData);
       setPurchaseRequests(purchaseRequestsData);
       setDepartments(departmentsData);
-      setDepartments(departmentsData);
+      setFuelRecords(fuelRecordsData);
+      setFuelCommitments(fuelCommitmentsData);
+      setVehicles(vehiclesData);
+      setVehicleMaintenances(vehicleMaintenancesData);
     } catch (err: any) {
       console.error("Load error:", err);
       if (err.message.includes("policy")) setIsPermissionsError(true);
@@ -286,6 +317,8 @@ const App: React.FC = () => {
       case 'utility_bills': return 'CONTAS DE CONSUMO';
       case 'supplementations': return 'SUPLEMENTAÇÃO ORÇAMENTÁRIA';
       case 'amendments': return 'GESTÃO DE ADITIVOS';
+      case 'fuel_management': return 'GESTÃO DE COMBUSTÍVEL';
+      case 'vehicle_maintenance': return 'MANUTENÇÃO DE VEÍCULOS';
       default: return currentView.toUpperCase();
     }
   };
@@ -334,6 +367,8 @@ const App: React.FC = () => {
           <NavItem viewName="purchase_requests" icon={ShoppingCart} label="Empenhos" enabled={!!perms.purchase_request?.view} />
           <NavItem viewName="daily_allowances" icon={Briefcase} label="Diárias" enabled={!!perms.daily_allowance?.view} />
           <NavItem viewName="utility_bills" icon={Lightbulb} label="Água/Luz" enabled={!!perms.utility_bills?.view} />
+          <NavItem viewName="fuel_management" icon={Droplet} label="Combustível" enabled={!!perms.fuel_management?.view} />
+          <NavItem viewName="vehicle_maintenance" icon={Wrench} label="Manutenção" enabled={!!perms.vehicle_maintenance?.view} />
           <NavItem viewName="supplementations" icon={TrendingUp} label="Suplementação" enabled={!!perms.supplementation?.view} />
           <NavItem viewName="pgm_dispatch" icon={Scale} label="Despachos PGM" enabled={!!(perms.pgm_dispatch?.view && menuSettings?.pgm_dispatch_enabled)} />
           <NavItem viewName="fiscalization" icon={ShieldCheck} label="Fiscalização" enabled={!!(perms.fiscalization?.view && menuSettings?.fiscalization_enabled)} />
@@ -476,6 +511,34 @@ const App: React.FC = () => {
               amendments={amendments}
               onEditContract={(c) => { setEditingContract(c); setIsContractModalOpen(true); }}
               userProfile={userProfile}
+            />
+          )}
+          {view === 'fuel_management' && (
+            <FuelList
+              records={fuelRecords}
+              commitments={fuelCommitments}
+              userProfile={userProfile}
+              departments={departments}
+              onNewRecord={() => { setEditingFuelRecord(null); setIsFuelModalOpen(true); }}
+              onEditRecord={(r) => { setEditingFuelRecord(r); setIsFuelModalOpen(true); }}
+              onDeleteRecord={async (id) => { await deleteFuelRecord(id); loadData(); }}
+              onNewCommitment={() => { setEditingFuelCommitment(null); setIsFuelCommitmentModalOpen(true); }}
+              onEditCommitment={(c) => { setEditingFuelCommitment(c); setIsFuelCommitmentModalOpen(true); }}
+              onDeleteCommitment={async (id) => { await deleteFuelCommitment(id); loadData(); }}
+            />
+          )}
+          {view === 'vehicle_maintenance' && (
+            <VehicleMaintenanceList
+              maintenances={vehicleMaintenances}
+              vehicles={vehicles}
+              userProfile={userProfile}
+              departments={departments}
+              onNewMaintenance={() => { setEditingVehicleMaintenance(null); setIsVehicleMaintenanceModalOpen(true); }}
+              onEditMaintenance={(m) => { setEditingVehicleMaintenance(m); setIsVehicleMaintenanceModalOpen(true); }}
+              onDeleteMaintenance={async (id) => { await deleteVehicleMaintenance(id); loadData(); }}
+              onNewVehicle={() => { setEditingVehicle(null); setIsVehicleModalOpen(true); }}
+              onEditVehicle={(v) => { setEditingVehicle(v); setIsVehicleModalOpen(true); }}
+              onDeleteVehicle={async (id) => { await deleteVehicle(id); loadData(); }}
             />
           )}
           {view === 'users' && <UserManagement />}
@@ -654,6 +717,42 @@ const App: React.FC = () => {
       />
       {/* Old Modal - Kept for editing existing legacy items if needed, but new flow uses Form */}
       <SupplementationModal isOpen={isSupplementationModalOpen} onClose={() => setIsSupplementationModalOpen(false)} supplementation={editingSupplementation as any} onSave={async (s) => { if (editingSupplementation) await updateSupplementation(s as any); else await createSupplementation(s); loadData(); }} isReadOnly={!isAdmin && !isSuperAdmin && !perms.supplementation?.manage} />
+
+      {/* Fuel Management Modals */}
+      <FuelModal
+        isOpen={isFuelModalOpen}
+        onClose={() => setIsFuelModalOpen(false)}
+        record={editingFuelRecord}
+        commitments={fuelCommitments}
+        userProfile={userProfile}
+        departments={departments}
+        onSave={async (r) => { if (editingFuelRecord) await updateFuelRecord(r as FuelRecord); else await createFuelRecord(r); loadData(); }}
+      />
+      <FuelCommitmentModal
+        isOpen={isFuelCommitmentModalOpen}
+        onClose={() => setIsFuelCommitmentModalOpen(false)}
+        commitment={editingFuelCommitment}
+        departments={departments}
+        records={fuelRecords}
+        onSave={async (c) => { if (editingFuelCommitment) await updateFuelCommitment(c as FuelCommitment); else await createFuelCommitment(c); loadData(); }}
+      />
+
+      {/* Vehicle Maintenance Modals */}
+      <VehicleModal
+        isOpen={isVehicleModalOpen}
+        onClose={() => setIsVehicleModalOpen(false)}
+        vehicle={editingVehicle}
+        departments={departments}
+        onSave={async (v) => { if (editingVehicle) await updateVehicle(v as Vehicle); else await createVehicle(v); loadData(); }}
+      />
+      <VehicleMaintenanceModal
+        isOpen={isVehicleMaintenanceModalOpen}
+        onClose={() => setIsVehicleMaintenanceModalOpen(false)}
+        maintenance={editingVehicleMaintenance}
+        vehicles={vehicles}
+        userProfile={userProfile}
+        onSave={async (m) => { if (editingVehicleMaintenance) await updateVehicleMaintenance(m as VehicleMaintenance); else await createVehicleMaintenance(m); loadData(); }}
+      />
     </div >
   );
 };

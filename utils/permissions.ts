@@ -15,7 +15,9 @@ export const getUserPermissions = (user: UserProfile | null): UserPermissions =>
             supplementation: { view: true, manage: true },
             fiscalization: { view: true, manage: true },
             pgm_dispatch: { view: true, manage: true },
-            users: { view: true, manage: true }
+            users: { view: true, manage: true },
+            fuel_management: { view: true, manage: true },
+            vehicle_maintenance: { view: true, manage: true }
         };
     }
 
@@ -35,7 +37,9 @@ export const getUserPermissions = (user: UserProfile | null): UserPermissions =>
         supplementation: { view: true, manage: false },
         fiscalization: { view: false, manage: false }, // Advanced modules hidden by default
         pgm_dispatch: { view: false, manage: false },
-        users: { view: false, manage: false }
+        users: { view: false, manage: false },
+        fuel_management: { view: true, manage: false },
+        vehicle_maintenance: { view: true, manage: false }
     };
 
     // 3. Apply Explicit Overrides from Database
@@ -83,6 +87,14 @@ export const getUserPermissions = (user: UserProfile | null): UserPermissions =>
             users: {
                 view: user.permissions.users?.view || false,
                 manage: user.permissions.users?.manage || false
+            },
+            fuel_management: {
+                view: user.permissions.fuel_management?.view || false,
+                manage: user.permissions.fuel_management?.manage || false
+            },
+            vehicle_maintenance: {
+                view: user.permissions.vehicle_maintenance?.view || false,
+                manage: user.permissions.vehicle_maintenance?.manage || false
             }
         };
     }
